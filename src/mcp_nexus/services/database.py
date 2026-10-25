@@ -104,3 +104,55 @@ class Database:
             for row in rows
         ]
 
+    async def save_template(self, name: str, body: str, variables: list[str]) -> int:
+        connection = self._require_connection()
+        cursor = await connection.execute(
+            """
+            INSERT INTO prompt_templates(name, body, variables)
+            VALUES (?, ?, ?)
+            ON CONFLICT(name) DO UPDATE SET body=excluded.body,
+            variables=excluded.variables, updated_at=CURRENT_TIMESTAMP
+            RETURNING id
+            """,
+            (name, body, json.dumps(variables)),
+        )
+        row = await cursor.fetchone()
+        await connection.commit()
+        return int(row["id"])
+
+    async def get_template(self, name: str) -> dict[str, Any] | None:
+        connection = self._require_connection()
+        async with connection.execute(
+            "SELECT id, name, body, variables, created_at, updated_at "
+            "FROM prompt_templates WHERE name = ?",
+            (name,),
+        ) as cursor:
+            row = await cursor.fetchone()
+        if row is None:
+            return None
+        return {
+            "id": row["id"],
+            "name": row["name"],
+            "body": row["body"],
+            "variables": json.loads(row["variables"]),
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
+
+    async def list_templates(self) -> list[dict[str, Any]]:
+        connection = self._require_connection()
+        async with connection.execute(
+            "SELECT name, body, variables, created_at, updated_at "
+            "FROM prompt_templates ORDER BY name"
+        ) as cursor:
+            rows = await cursor.fetchall()
+        return [
+            {
+                "name": row["name"],
+                "body": row["body"],
+                "variables": json.loads(row["variables"]),
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+            }
+            for row in rows
+        ]

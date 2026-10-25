@@ -65,3 +65,43 @@ webhook, and web-fetch connectors.
 
 Build the FastAPI host, LLM connection router, and parameterized prompt-template
 manager on top of the Phase 2 services.
+
+## 2026-10-25 — Phase 3: FastAPI host and LLM routing
+
+### Built
+
+- Added `LLMRouter` adapters for OpenAI Chat Completions, Anthropic Messages,
+  and local Ollama chat APIs.
+- Added normalized Pydantic request/response models for provider-independent
+  chat calls.
+- Added `TemplateManager` with `{{ variable }}` extraction, persistence, and
+  missing-variable validation.
+- Extended SQLite persistence with prompt template CRUD and protocol event
+  storage.
+- Added the FastAPI application with health, connector, event, template, render,
+  and chat endpoints.
+- Added application lifecycle management so the database is connected and
+  closed with the FastAPI app.
+- Added six tests covering routing, templates, persistence, connector exposure,
+  and API health.
+
+### Architectural decisions
+
+- Provider adapters share one normalized `LLMRequest`/`LLMResponse` contract,
+  keeping frontend and API code independent of vendor-specific response shapes.
+- Provider credentials are read from environment variables and are never stored
+  in the SQLite event log.
+- Template variables are extracted from the body at save time and validated
+  before rendering.
+- Chat requests and raw provider responses are recorded as inspector events.
+
+### Validation
+
+- `python -m pytest -q` — 6 passed.
+- `python -m ruff check src tests` — passed.
+- `python -m compileall -q src tests` — passed.
+
+### Next phase
+
+Build the dashboard UI with Chat & Execution, Connections, Templates, and Live
+JSON-RPC Inspector tabs.
