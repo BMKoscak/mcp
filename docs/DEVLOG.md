@@ -137,3 +137,18 @@ JSON-RPC Inspector tabs.
 
 Finalize the README, complete release documentation, run endpoint verification,
 and publish the repository to GitHub.
+
+## 2026-10-25 — Phase 5: documentation and release preparation
+
+### Built
+
+- Replaced the initial README with a complete project guide, badges, feature
+  overview, Mermaid architecture diagram, quickstart, API table, layout guide,
+  and sub-20-line connector example.
+- Added the MIT `LICENSE`.
+- Confirmed the repository is ready for publication as `BMKoscak/mcp`.
+
+### Validation
+
+- Full test suite and lint remain green after documentation changes.
+- Git history contains one Conventional Commit per completed milestone.
