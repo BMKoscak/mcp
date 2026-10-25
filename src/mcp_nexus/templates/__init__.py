@@ -1,0 +1,2 @@
+"""MCP Nexus prompt templates."""
+
