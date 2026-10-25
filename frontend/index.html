@@ -127,7 +127,14 @@
           connectors: [], templates: [], events: [],
           chat: { provider: 'ollama', model: 'llama3.2', prompt: '', response: '', error: '', loading: false },
           template: { name: '', body: '' },
-          async loadAll() { await Promise.all([this.loadConnectors(), this.loadTemplates(), this.loadEvents()]); },
+          async loadAll() {
+            await Promise.all([this.loadConnectors(), this.loadTemplates(), this.loadEvents()]);
+            const stream = new EventSource('/api/events/stream');
+            stream.addEventListener('protocol', event => {
+              this.events.unshift(JSON.parse(event.data));
+              this.events = this.events.slice(0, 50);
+            });
+          },
           async loadConnectors() { this.connectors = (await fetch('/api/connectors')).json().then(x => x.connectors); },
           async loadTemplates() { this.templates = await fetch('/api/templates').then(x => x.json()); },
           async loadEvents() { this.events = await fetch('/api/events?limit=50').then(x => x.json()); },

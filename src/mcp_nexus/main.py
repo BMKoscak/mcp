@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -62,6 +65,25 @@ def create_app(
     @app.get("/api/events")
     async def events(limit: int = 100) -> list[dict[str, Any]]:
         return await database.list_events(limit)
+
+    @app.get("/api/events/stream")
+    async def event_stream(request: Request) -> StreamingResponse:
+        async def generate():
+            latest = (await database.list_events(1))
+            last_id = latest[0]["id"] if latest else 0
+            yield "event: ready\ndata: {}\n\n"
+            while not await request.is_disconnected():
+                new_events = await database.list_events_after(last_id)
+                for event in reversed(new_events):
+                    last_id = event["id"]
+                    yield f"event: protocol\ndata: {json.dumps(event)}\n\n"
+                await asyncio.sleep(1)
+
+        return StreamingResponse(
+            generate(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
     @app.get("/api/templates")
     async def list_templates() -> list[dict[str, Any]]:

@@ -116,6 +116,7 @@ call `registry.register_all(server)`.
 | `GET /health` | Host health check |
 | `GET /api/connectors` | Registered MCP connectors |
 | `GET /api/events` | Persisted inspector events |
+| `GET /api/events/stream` | Server-Sent Events stream for new inspector events |
 | `GET /api/templates` | Saved prompt templates |
 | `POST /api/templates` | Save or replace a template |
 | `POST /api/templates/{name}/render` | Render a template with variables |

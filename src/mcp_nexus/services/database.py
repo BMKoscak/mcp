@@ -104,6 +104,25 @@ class Database:
             for row in rows
         ]
 
+    async def list_events_after(self, event_id: int, limit: int = 100) -> list[dict[str, Any]]:
+        connection = self._require_connection()
+        async with connection.execute(
+            "SELECT id, direction, method, payload, created_at "
+            "FROM protocol_events WHERE id > ? ORDER BY id LIMIT ?",
+            (event_id, max(1, min(limit, 1000))),
+        ) as cursor:
+            rows = await cursor.fetchall()
+        return [
+            {
+                "id": row["id"],
+                "direction": row["direction"],
+                "method": row["method"],
+                "payload": json.loads(row["payload"]),
+                "created_at": row["created_at"],
+            }
+            for row in rows
+        ]
+
     async def save_template(self, name: str, body: str, variables: list[str]) -> int:
         connection = self._require_connection()
         cursor = await connection.execute(

@@ -13,3 +13,12 @@ def test_health_and_connector_endpoints(tmp_path: Path) -> None:
             "webhook",
             "web_fetcher",
         ]
+
+
+def test_event_stream_advertises_sse(tmp_path: Path) -> None:
+    with (
+        TestClient(create_app(database_path=tmp_path / "stream.db", filesystem_root=tmp_path)) as client,
+        client.stream("GET", "/api/events/stream", headers={"Accept": "text/event-stream"}) as response,
+    ):
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/event-stream")

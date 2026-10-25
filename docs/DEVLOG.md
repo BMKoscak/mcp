@@ -152,3 +152,18 @@ and publish the repository to GitHub.
 
 - Full test suite and lint remain green after documentation changes.
 - Git history contains one Conventional Commit per completed milestone.
+
+## 2026-10-25 — Live inspector streaming
+
+### Built
+
+- Added `GET /api/events/stream`, an SSE endpoint that emits new persisted
+  protocol events without requiring dashboard refreshes.
+- Updated the dashboard to subscribe with `EventSource` and prepend incoming
+  events to the inspector.
+- Added an SSE response test while preserving the existing events history API.
+
+### Validation
+
+- `python -m pytest -q` — 8 passed.
+- `python -m ruff check src tests` — passed.
