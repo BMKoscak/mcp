@@ -13,6 +13,8 @@ def test_health_and_connector_endpoints(tmp_path: Path) -> None:
             "webhook",
             "web_fetcher",
         ]
+        providers = client.get("/api/providers").json()
+        assert {item["provider"] for item in providers} == {"ollama", "openai", "anthropic"}
 
 
 def test_event_stream_advertises_sse(tmp_path: Path) -> None:

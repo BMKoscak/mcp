@@ -58,6 +58,21 @@ webhook, and web-fetch connectors.
 
 - `python -m pytest -q` — 3 passed.
 - `python -m ruff check src tests` — passed.
+
+## 2026-10-25 — Provider connections
+
+### Built
+
+- Added provider status reporting for Ollama, OpenAI, and Anthropic without
+  returning credentials.
+- Added safe reachability checks using provider model-list endpoints.
+- Wired the Connections tab to display configuration state and test results.
+- Added status and mocked connection-check coverage.
+
+### Validation
+
+- `python -m pytest -q` — 10 passed.
+- `python -m ruff check src tests` — passed.
 - FastMCP engine smoke test — registered `filesystem`, `webhook`, and
   `web_fetcher`.
 

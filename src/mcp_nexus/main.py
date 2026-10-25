@@ -62,6 +62,17 @@ def create_app(
     async def connectors() -> dict[str, list[str]]:
         return {"connectors": list(engine.registry.names())}
 
+    @app.get("/api/providers")
+    async def providers() -> list[dict[str, str | bool]]:
+        return router.provider_status()
+
+    @app.post("/api/providers/{provider}/test")
+    async def test_provider(provider: str) -> dict[str, str | bool]:
+        try:
+            return await router.test_connection(provider)
+        except (RuntimeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     @app.get("/api/events")
     async def events(limit: int = 100) -> list[dict[str, Any]]:
         return await database.list_events(limit)

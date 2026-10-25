@@ -115,6 +115,8 @@ call `registry.register_all(server)`.
 | --- | --- |
 | `GET /health` | Host health check |
 | `GET /api/connectors` | Registered MCP connectors |
+| `GET /api/providers` | Provider configuration status without secrets |
+| `POST /api/providers/{provider}/test` | Test provider reachability |
 | `GET /api/events` | Persisted inspector events |
 | `GET /api/events/stream` | Server-Sent Events stream for new inspector events |
 | `GET /api/templates` | Saved prompt templates |

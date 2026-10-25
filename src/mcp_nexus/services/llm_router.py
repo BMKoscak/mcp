@@ -43,6 +43,58 @@ class LLMRouter:
         self.ollama_base_url = ollama_base_url.rstrip("/")
         self._client = client
 
+    def provider_status(self) -> list[dict[str, str | bool]]:
+        return [
+            {
+                "provider": "ollama",
+                "configured": bool(self.ollama_base_url),
+                "endpoint": self.ollama_base_url,
+            },
+            {
+                "provider": "openai",
+                "configured": bool(self.openai_api_key),
+                "endpoint": "https://api.openai.com",
+            },
+            {
+                "provider": "anthropic",
+                "configured": bool(self.anthropic_api_key),
+                "endpoint": "https://api.anthropic.com",
+            },
+        ]
+
+    async def test_connection(self, provider: str) -> dict[str, str | bool]:
+        owns_client = self._client is None
+        client = self._client or httpx.AsyncClient(timeout=15.0)
+        try:
+            if provider == "ollama":
+                response = await client.get(f"{self.ollama_base_url}/api/tags")
+            elif provider == "openai":
+                if not self.openai_api_key:
+                    raise RuntimeError("OPENAI_API_KEY is not configured")
+                response = await client.get(
+                    "https://api.openai.com/v1/models",
+                    headers={"Authorization": f"Bearer {self.openai_api_key}"},
+                )
+            elif provider == "anthropic":
+                if not self.anthropic_api_key:
+                    raise RuntimeError("ANTHROPIC_API_KEY is not configured")
+                response = await client.get(
+                    "https://api.anthropic.com/v1/models",
+                    headers={
+                        "x-api-key": self.anthropic_api_key,
+                        "anthropic-version": "2023-06-01",
+                    },
+                )
+            else:
+                raise ValueError(f"Unsupported LLM provider: {provider}")
+            response.raise_for_status()
+            return {"provider": provider, "ok": True, "detail": "Connection successful"}
+        except httpx.HTTPError as exc:
+            return {"provider": provider, "ok": False, "detail": str(exc)}
+        finally:
+            if owns_client:
+                await client.aclose()
+
     async def complete(self, request: LLMRequest) -> LLMResponse:
         owns_client = self._client is None
         client = self._client or httpx.AsyncClient(timeout=60.0)

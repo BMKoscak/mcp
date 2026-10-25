@@ -63,7 +63,21 @@
 
       <section x-show="activeTab === 'connections'" class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
         <h2 class="text-xl font-semibold">Connections</h2>
-        <p class="mt-1 text-sm text-slate-400">Registered MCP connectors available to the engine.</p>
+        <p class="mt-1 text-sm text-slate-400">Provider configuration and registered MCP connectors.</p>
+        <div class="mt-6 grid gap-4 md:grid-cols-3">
+          <template x-for="provider in providers" :key="provider.provider">
+            <div class="rounded-xl border border-slate-700 bg-slate-950 p-4">
+              <div class="flex items-center justify-between">
+                <p class="font-semibold capitalize" x-text="provider.provider"></p>
+                <span :class="provider.configured ? 'text-emerald-300' : 'text-amber-300'" class="text-xs" x-text="provider.configured ? 'Configured' : 'Not configured'"></span>
+              </div>
+              <p class="mt-2 truncate text-xs text-slate-500" x-text="provider.endpoint"></p>
+              <button @click="testProvider(provider.provider)" class="mt-4 rounded-lg border border-slate-700 px-3 py-2 text-sm hover:border-cyan-400">Test connection</button>
+              <p x-show="provider.result" class="mt-3 text-xs" :class="provider.result.ok ? 'text-emerald-300' : 'text-rose-300'" x-text="provider.result.detail"></p>
+            </div>
+          </template>
+        </div>
+        <h3 class="mt-8 font-semibold">MCP connectors</h3>
         <div class="mt-6 grid gap-4 sm:grid-cols-3">
           <template x-for="connector in connectors" :key="connector">
             <div class="rounded-xl border border-slate-700 bg-slate-950 p-4">
@@ -124,11 +138,11 @@
             { id: 'templates', label: 'Templates' },
             { id: 'inspector', label: 'Live Inspector' }
           ],
-          connectors: [], templates: [], events: [],
+          connectors: [], providers: [], templates: [], events: [],
           chat: { provider: 'ollama', model: 'llama3.2', prompt: '', response: '', error: '', loading: false },
           template: { name: '', body: '' },
           async loadAll() {
-            await Promise.all([this.loadConnectors(), this.loadTemplates(), this.loadEvents()]);
+            await Promise.all([this.loadConnectors(), this.loadProviders(), this.loadTemplates(), this.loadEvents()]);
             const stream = new EventSource('/api/events/stream');
             stream.addEventListener('protocol', event => {
               this.events.unshift(JSON.parse(event.data));
@@ -136,6 +150,13 @@
             });
           },
           async loadConnectors() { this.connectors = (await fetch('/api/connectors')).json().then(x => x.connectors); },
+          async loadProviders() { this.providers = await fetch('/api/providers').then(x => x.json()); },
+          async testProvider(provider) {
+            const result = await fetch(`/api/providers/${provider}/test`, { method: 'POST' });
+            const data = await result.json();
+            const item = this.providers.find(entry => entry.provider === provider);
+            if (item) item.result = result.ok ? data : { ok: false, detail: data.detail || 'Connection failed' };
+          },
           async loadTemplates() { this.templates = await fetch('/api/templates').then(x => x.json()); },
           async loadEvents() { this.events = await fetch('/api/events?limit=50').then(x => x.json()); },
           async saveTemplate() {
