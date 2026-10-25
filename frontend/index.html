@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en" class="bg-slate-950">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MCP Nexus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  </head>
+  <body class="min-h-screen bg-slate-950 text-slate-100">
+    <main x-data="nexusDashboard()" x-init="loadAll()" class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <header class="mb-8 flex flex-col gap-4 border-b border-slate-800 pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Local MCP Hub</p>
+          <h1 class="mt-2 text-4xl font-bold tracking-tight">MCP Nexus</h1>
+          <p class="mt-2 max-w-2xl text-slate-400">Connect models, execute tools, and inspect protocol traffic from one local workspace.</p>
+        </div>
+        <span class="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-sm text-emerald-300">● Local host online</span>
+      </header>
+
+      <nav class="mb-6 flex flex-wrap gap-2">
+        <template x-for="tab in tabs" :key="tab.id">
+          <button @click="activeTab = tab.id" :class="activeTab === tab.id ? 'bg-cyan-400 text-slate-950' : 'bg-slate-900 text-slate-300 hover:bg-slate-800'" class="rounded-lg px-4 py-2 text-sm font-semibold transition" x-text="tab.label"></button>
+        </template>
+      </nav>
+
+      <section x-show="activeTab === 'chat'" class="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+          <div class="mb-5 flex items-center justify-between">
+            <div>
+              <h2 class="text-xl font-semibold">Chat &amp; Execution</h2>
+              <p class="text-sm text-slate-400">Send a provider-neutral chat request.</p>
+            </div>
+            <span class="rounded-md bg-slate-800 px-2 py-1 text-xs text-slate-400">POST /api/chat</span>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="text-sm text-slate-300">Provider
+              <select x-model="chat.provider" class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 p-3">
+                <option value="ollama">Ollama</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option>
+              </select>
+            </label>
+            <label class="text-sm text-slate-300">Model
+              <input x-model="chat.model" class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 p-3" placeholder="llama3.2">
+            </label>
+          </div>
+          <label class="mt-4 block text-sm text-slate-300">Prompt
+            <textarea x-model="chat.prompt" rows="5" class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 p-3" placeholder="Ask your local model something..."></textarea>
+          </label>
+          <button @click="sendChat()" :disabled="chat.loading" class="mt-4 rounded-lg bg-cyan-400 px-5 py-3 font-semibold text-slate-950 disabled:opacity-50" x-text="chat.loading ? 'Running…' : 'Run chat'"></button>
+          <p x-show="chat.error" class="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-300" x-text="chat.error"></p>
+          <pre x-show="chat.response" class="mt-4 max-h-64 overflow-auto rounded-lg bg-slate-950 p-4 text-sm text-cyan-200" x-text="chat.response"></pre>
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+          <h2 class="text-xl font-semibold">Execution notes</h2>
+          <ul class="mt-4 space-y-3 text-sm text-slate-400">
+            <li>Requests are normalized before reaching the selected provider.</li>
+            <li>Raw request and response payloads appear in the inspector.</li>
+            <li>Outbound connectors remain confirmation-gated by default.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section x-show="activeTab === 'connections'" class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+        <h2 class="text-xl font-semibold">Connections</h2>
+        <p class="mt-1 text-sm text-slate-400">Registered MCP connectors available to the engine.</p>
+        <div class="mt-6 grid gap-4 sm:grid-cols-3">
+          <template x-for="connector in connectors" :key="connector">
+            <div class="rounded-xl border border-slate-700 bg-slate-950 p-4">
+              <p class="font-semibold capitalize" x-text="connector.replace('_', ' ')"></p>
+              <p class="mt-2 text-xs text-emerald-300">Registered and ready</p>
+            </div>
+          </template>
+        </div>
+      </section>
+
+      <section x-show="activeTab === 'templates'" class="grid gap-6 lg:grid-cols-2">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+          <h2 class="text-xl font-semibold">Template Studio</h2>
+          <div class="mt-4 space-y-4">
+            <input x-model="template.name" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-3" placeholder="Template name">
+            <textarea x-model="template.body" rows="7" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-3" placeholder="Summarize {{ document }} for {{ audience }}"></textarea>
+            <button @click="saveTemplate()" class="rounded-lg bg-cyan-400 px-5 py-3 font-semibold text-slate-950">Save template</button>
+          </div>
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+          <h2 class="text-xl font-semibold">Saved templates</h2>
+          <div class="mt-4 space-y-3">
+            <template x-for="item in templates" :key="item.name">
+              <button @click="template.name = item.name; template.body = item.body" class="block w-full rounded-lg border border-slate-700 bg-slate-950 p-3 text-left hover:border-cyan-400">
+                <span class="font-semibold" x-text="item.name"></span>
+                <span class="mt-1 block truncate text-sm text-slate-400" x-text="item.body"></span>
+              </button>
+            </template>
+            <p x-show="!templates.length" class="text-sm text-slate-500">No templates saved yet.</p>
+          </div>
+        </div>
+      </section>
+
+      <section x-show="activeTab === 'inspector'" class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+        <div class="flex items-center justify-between">
+          <div><h2 class="text-xl font-semibold">Live JSON-RPC Inspector</h2><p class="text-sm text-slate-400">Latest structured host and provider events.</p></div>
+          <button @click="loadEvents()" class="rounded-lg border border-slate-700 px-3 py-2 text-sm hover:border-cyan-400">Refresh</button>
+        </div>
+        <div class="mt-5 space-y-3">
+          <template x-for="event in events" :key="event.id">
+            <details class="rounded-lg border border-slate-800 bg-slate-950 p-4">
+              <summary class="cursor-pointer text-sm"><span class="mr-3 text-cyan-300" x-text="event.direction"></span><span x-text="event.method || 'event'"></span><span class="float-right text-xs text-slate-500" x-text="event.created_at"></span></summary>
+              <pre class="mt-3 overflow-auto text-xs text-slate-400" x-text="JSON.stringify(event.payload, null, 2)"></pre>
+            </details>
+          </template>
+          <p x-show="!events.length" class="text-sm text-slate-500">No events recorded yet.</p>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      function nexusDashboard() {
+        return {
+          activeTab: 'chat',
+          tabs: [
+            { id: 'chat', label: 'Chat & Execution' },
+            { id: 'connections', label: 'Connections' },
+            { id: 'templates', label: 'Templates' },
+            { id: 'inspector', label: 'Live Inspector' }
+          ],
+          connectors: [], templates: [], events: [],
+          chat: { provider: 'ollama', model: 'llama3.2', prompt: '', response: '', error: '', loading: false },
+          template: { name: '', body: '' },
+          async loadAll() { await Promise.all([this.loadConnectors(), this.loadTemplates(), this.loadEvents()]); },
+          async loadConnectors() { this.connectors = (await fetch('/api/connectors')).json().then(x => x.connectors); },
+          async loadTemplates() { this.templates = await fetch('/api/templates').then(x => x.json()); },
+          async loadEvents() { this.events = await fetch('/api/events?limit=50').then(x => x.json()); },
+          async saveTemplate() {
+            if (!this.template.name || !this.template.body) return;
+            await fetch('/api/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.template) });
+            await this.loadTemplates();
+          },
+          async sendChat() {
+            this.chat.loading = true; this.chat.error = ''; this.chat.response = '';
+            try {
+              const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: this.chat.provider, model: this.chat.model, messages: [{ role: 'user', content: this.chat.prompt }] }) });
+              const data = await response.json();
+              if (!response.ok) throw new Error(data.detail || 'Chat request failed');
+              this.chat.response = data.content; await this.loadEvents();
+            } catch (error) { this.chat.error = error.message; } finally { this.chat.loading = false; }
+          }
+        }
+      }
+    </script>
+  </body>
+</html>

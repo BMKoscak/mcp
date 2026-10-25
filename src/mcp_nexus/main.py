@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .mcp_engine import MCPEngine
@@ -86,6 +87,10 @@ def create_app(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         await database.record_event("response", response.raw, method="chat")
         return response.model_dump()
+
+    frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
+    if frontend_dir.is_dir():
+        app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
     return app
 

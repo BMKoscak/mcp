@@ -105,3 +105,35 @@ manager on top of the Phase 2 services.
 
 Build the dashboard UI with Chat & Execution, Connections, Templates, and Live
 JSON-RPC Inspector tabs.
+
+## 2026-10-25 — Phase 4: local dashboard
+
+### Built
+
+- Added a zero-build `frontend/index.html` dashboard using Tailwind CDN,
+  Alpine.js, and HTMX.
+- Added tabs for Chat & Execution, Connections, Templates, and Live Inspector.
+- Added browser actions for chat requests, template saves, connector discovery,
+  and event refresh.
+- Mounted the frontend from FastAPI so `GET /` serves the local dashboard.
+- Added a frontend serving smoke test.
+
+### Architectural decisions
+
+- Keep the frontend dependency-light and local-first: CDN assets are used to
+  avoid introducing a build pipeline during the initial release.
+- Use the existing JSON API as the UI boundary, keeping frontend state separate
+  from MCP connector implementation.
+- Treat the inspector as an event view over persisted request/response payloads;
+  a future phase can replace polling with SSE without changing its data shape.
+
+### Validation
+
+- `python -m pytest -q` — 7 passed.
+- `python -m ruff check src tests` — passed.
+- `git diff --check` — passed.
+
+### Next phase
+
+Finalize the README, complete release documentation, run endpoint verification,
+and publish the repository to GitHub.
