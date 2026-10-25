@@ -94,14 +94,25 @@
           <div class="mt-4 space-y-4">
             <input x-model="template.name" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-3" placeholder="Template name">
             <textarea x-model="template.body" rows="7" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-3" placeholder="Summarize {{ document }} for {{ audience }}"></textarea>
-            <button @click="saveTemplate()" class="rounded-lg bg-cyan-400 px-5 py-3 font-semibold text-slate-950">Save template</button>
+            <div x-show="template.variables().length" class="space-y-3">
+              <p class="text-sm text-slate-400">Template variables</p>
+              <template x-for="variable in template.variables()" :key="variable">
+                <input x-model="template.values[variable]" :placeholder="variable" class="w-full rounded-lg border border-slate-700 bg-slate-950 p-3">
+              </template>
+            </div>
+            <div class="flex flex-wrap gap-3">
+              <button @click="saveTemplate()" class="rounded-lg bg-cyan-400 px-5 py-3 font-semibold text-slate-950">Save template</button>
+              <button @click="renderTemplate()" class="rounded-lg border border-slate-700 px-5 py-3 font-semibold hover:border-cyan-400">Preview render</button>
+            </div>
+            <p x-show="template.error" class="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-300" x-text="template.error"></p>
+            <pre x-show="template.rendered" class="max-h-48 overflow-auto rounded-lg bg-slate-950 p-4 text-sm text-cyan-200" x-text="template.rendered"></pre>
           </div>
         </div>
         <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
           <h2 class="text-xl font-semibold">Saved templates</h2>
           <div class="mt-4 space-y-3">
             <template x-for="item in templates" :key="item.name">
-              <button @click="template.name = item.name; template.body = item.body" class="block w-full rounded-lg border border-slate-700 bg-slate-950 p-3 text-left hover:border-cyan-400">
+              <button @click="selectTemplate(item)" class="block w-full rounded-lg border border-slate-700 bg-slate-950 p-3 text-left hover:border-cyan-400">
                 <span class="font-semibold" x-text="item.name"></span>
                 <span class="mt-1 block truncate text-sm text-slate-400" x-text="item.body"></span>
               </button>
@@ -140,7 +151,12 @@
           ],
           connectors: [], providers: [], templates: [], events: [],
           chat: { provider: 'ollama', model: 'llama3.2', prompt: '', response: '', error: '', loading: false },
-          template: { name: '', body: '' },
+          template: {
+            name: '', body: '', values: {}, rendered: '', error: '',
+            variables() {
+              return [...new Set([...this.body.matchAll(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g)].map(match => match[1]))];
+            }
+          },
           async loadAll() {
             await Promise.all([this.loadConnectors(), this.loadProviders(), this.loadTemplates(), this.loadEvents()]);
             const stream = new EventSource('/api/events/stream');
@@ -161,8 +177,25 @@
           async loadEvents() { this.events = await fetch('/api/events?limit=50').then(x => x.json()); },
           async saveTemplate() {
             if (!this.template.name || !this.template.body) return;
-            await fetch('/api/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.template) });
+            this.template.error = ''; this.template.rendered = '';
+            const response = await fetch('/api/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: this.template.name, body: this.template.body }) });
+            if (!response.ok) { this.template.error = (await response.json()).detail || 'Unable to save template'; return; }
             await this.loadTemplates();
+          },
+          selectTemplate(item) {
+            this.template.name = item.name; this.template.body = item.body;
+            this.template.values = {}; this.template.rendered = ''; this.template.error = '';
+          },
+          async renderTemplate() {
+            this.template.error = ''; this.template.rendered = '';
+            if (!this.template.name) { this.template.error = 'Select or save a template first'; return; }
+            const response = await fetch(`/api/templates/${encodeURIComponent(this.template.name)}/render`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ values: this.template.values })
+            });
+            const data = await response.json();
+            if (!response.ok) { this.template.error = data.detail || 'Unable to render template'; return; }
+            this.template.rendered = data.body;
           },
           async sendChat() {
             this.chat.loading = true; this.chat.error = ''; this.chat.response = '';

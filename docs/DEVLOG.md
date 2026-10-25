@@ -59,6 +59,20 @@ webhook, and web-fetch connectors.
 - `python -m pytest -q` — 3 passed.
 - `python -m ruff check src tests` — passed.
 
+## 2026-10-25 — Template execution preview
+
+### Built
+
+- Added an interactive Template Studio preview flow that extracts variables in
+  the browser and submits values to the existing render endpoint.
+- Added saved-template selection, validation feedback, and rendered output.
+- Added API coverage for saving and rendering a template through FastAPI.
+
+### Validation
+
+- `python -m pytest -q` — 11 passed.
+- `python -m ruff check src tests` — passed.
+
 ## 2026-10-25 — Provider connections
 
 ### Built
